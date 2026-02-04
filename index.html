@@ -1,109 +1,231 @@
-"use client";
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEDUSE // CHROME_ARCHIVE</title>
+    
+    <!-- 引入高级像素字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Space+Mono:ital,wght@1,700&display=swap" rel="stylesheet">
+    
+    <!-- 核心库：Tailwind & Alpine.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-// 模拟数据 (未来从 Notion 获取)
-const WORKS = [
-  { id: 'SPEC_01', cat: 'Necklace', cn: { t: '冥河', d: '生物电波在金属中凝结。' }, en: { t: 'STYGIAN', d: 'Bio-signals crystallized in alloy.' }, img: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800' },
-  { id: 'SPEC_04', cat: 'Nails', cn: { t: '极光', d: '5000米压强下的色彩重构。' }, en: { t: 'AURORA', d: 'Color reconstruction at 5000m pressure.' }, img: 'https://images.unsplash.com/photo-1604654894610-df490651e123?q=80&w=800' },
-  { id: 'SPEC_07', cat: 'Earrings', cn: { t: '虚空', d: '深海神经节点的物理镜像。' }, en: { t: 'VOID', d: 'Physical mirror of deep-sea neural nodes.' }, img: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800' }
-];
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        pixel: ['"DotGothic16"', 'sans-serif'],
+                        mono: ['"Space Mono"', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
 
-export default function Home() {
-  const [lang, setLang] = useState('EN');
-  const [selected, setSelected] = useState(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        body { 
+            background: #000000; 
+            color: #ffffff;
+            font-family: 'DotGothic16', sans-serif;
+            overflow-x: hidden;
+            image-rendering: pixelated; /* 强制像素化 */
+            cursor: none; /* 隐藏原生鼠标 */
+        }
 
-  useEffect(() => {
-    const handleMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
-    window.addEventListener('mousemove', handleMove);
-    return () => window.removeEventListener('mousemove', handleMove);
-  }, []);
+        /* WIX BLENDMODE: 差值圆环光标 */
+        #lens {
+            width: 250px;
+            height: 250px;
+            background: #ffffff;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            mix-blend-mode: difference;
+            z-index: 999;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s cubic-bezier(0.19, 1, 0.22, 1), height 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        }
 
-  return (
-    <div className="min-h-screen bg-black font-pixel selection:bg-cyan-500/30 overflow-hidden">
-      {/* 1. 差值镜头光标 */}
-      <div id="lens" style={{ left: mousePos.x, top: mousePos.y }} />
+        /* 巨大的拉伸背景大字 */
+        .watermark {
+            position: fixed;
+            font-size: 30vw;
+            font-weight: 800;
+            font-style: italic;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scaleY(1.6);
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 0;
+            white-space: nowrap;
+            font-family: 'Space Mono', monospace;
+        }
 
-      {/* 2. 背景拉伸水印 (Wix Style) */}
-      <div className="fixed inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-        <h1 className="text-[30vw] font-bold italic tracking-tighter pixel-stretched">MEDUSE</h1>
-      </div>
+        /* 金属感边框容器 */
+        .chrome-box {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(10, 10, 10, 0.4);
+            transition: all 0.5s ease;
+        }
+        .chrome-box:hover {
+            border-color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+        }
 
-      {/* 3. HUD 导航 */}
-      <nav className="fixed top-0 w-full p-10 z-[100] flex justify-between items-start mix-blend-difference">
-        <div className="flex flex-col">
-          <h2 className="text-3xl italic leading-none">PROTO_KETO</h2>
-          <span className="text-[9px] font-mono tracking-[0.6em] opacity-60">ABYSSAL_DATA_v1.0</span>
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar { display: none; }
+
+        @keyframes pulse-line {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(400%); }
+        }
+        .scanline {
+            position: absolute; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, #ffffff22, transparent);
+            animation: pulse-line 4s linear infinite;
+        }
+    </style>
+</head>
+<body x-data="{ 
+    lang: 'CN', 
+    selected: null,
+    works: [
+        { id: 'S-01', cat: 'Necklace', cn: { t: '冥河之光', d: '生物电波在金属中凝结。' }, en: { t: 'STYGIAN_LINK', d: 'Bio-signals crystallized in alloy.' }, img: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800' },
+        { id: 'S-04', cat: 'Nails', cn: { t: '控制失效', d: '5000米压强下的色彩重构。' }, en: { t: 'AURORA_TOUCH', d: 'Color reconstruction at 5000m pressure.' }, img: 'https://images.unsplash.com/photo-1604654894610-df490651e123?q=80&w=800' },
+        { id: 'S-09', cat: 'Earrings', cn: { t: '虚空神经', d: '深海神经节点的物理镜像。' }, en: { t: 'VOID_NODE', d: 'Physical mirror of deep-sea neural nodes.' }, img: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800' }
+    ]
+}">
+
+    <!-- Wix 灵魂交互：差值镜头 -->
+    <div id="lens"></div>
+
+    <!-- 背景装饰：拉伸水印 -->
+    <div class="watermark">MEDUSE</div>
+
+    <!-- 1. HUD 导航区 (差值模式) -->
+    <nav class="fixed top-0 w-full p-10 z-[100] flex justify-between items-start mix-blend-difference">
+        <div class="flex flex-col">
+            <h1 class="text-4xl font-pixel italic tracking-tighter leading-none">MEDUSE_CHROME</h1>
+            <span class="text-[8px] font-mono tracking-[0.6em] opacity-50 mt-1 uppercase">Specimen_Lab_v1.0.4</span>
         </div>
-        <button onClick={() => setLang(lang === 'CN' ? 'EN' : 'CN')} className="border border-white px-4 py-1 text-xs hover:bg-white hover:text-black transition-all">
-          [{lang}]
-        </button>
-      </nav>
-
-      {/* 4. 作品网格 */}
-      <main className="relative z-10 pt-64 pb-64 px-10 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-20">
-        {WORKS.map((work) => (
-          <motion.div 
-            key={work.id}
-            whileHover={{ scale: 1.02 }}
-            onClick={() => setSelected(work)}
-            className="group relative border border-white/10 p-6 bg-zinc-900/10 cursor-none"
-          >
-            <div className="flex justify-between font-mono text-[8px] opacity-40 mb-4 uppercase">
-              <span>Ref.{work.id}</span>
-              <span>{work.cat}</span>
-            </div>
-            <div className="relative aspect-[3/4] overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-1000">
-              <img src={work.img} className="w-full h-full object-cover opacity-30 group-hover:opacity-100" />
-              <div className="absolute inset-0 border-[15px] border-black/50 pointer-events-none" />
-            </div>
-            <div className="mt-8 border-t border-white/10 pt-4">
-              <h3 className="text-4xl italic tracking-tighter group-hover:text-cyan-400 transition-colors uppercase">
-                {lang === 'CN' ? work.cn.t : work.en.t}
-              </h3>
-            </div>
-          </motion.div>
-        ))}
-      </main>
-
-      {/* 5. 灯箱详情 */}
-      <AnimatePresence>
-        {selected && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black p-10 flex items-center justify-center"
-            onClick={() => setSelected(null)}
-          >
-            <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
-              <div className="relative border border-white/20 p-2">
-                <img src={selected.img} className="w-full h-auto" />
-                <div className="absolute top-4 left-4 bg-white text-black px-2 py-1 text-[10px]">RAW_DATA</div>
-              </div>
-              <div className="space-y-10 mix-blend-difference">
-                <h2 className="text-7xl italic leading-none text-white uppercase">{lang === 'CN' ? selected.cn.t : selected.en.t}</h2>
-                <p className="font-mono text-sm leading-relaxed opacity-60 border-l border-white/20 pl-8">
-                  {lang === 'CN' ? selected.cn.d : selected.en.d}
-                </p>
-                <button className="w-full py-4 bg-white text-black font-bold uppercase text-xs hover:bg-cyan-400 transition-colors">TERMINATE_SESSION</button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 6. 底部数据栏 */}
-      <footer className="fixed bottom-0 w-full p-10 z-[100] font-mono text-[8px] opacity-40 mix-blend-difference flex justify-between pointer-events-none">
-        <div className="flex flex-col">
-          <span>LAT: 35.68 N / LNG: 139.69 E</span>
-          <span>DEPTH: 10,994 M</span>
+        <div class="flex gap-10 font-mono text-[10px] uppercase pt-2">
+            <button class="hover:line-through" @click="location.reload()">Refresh_</button>
+            <button @click="lang = (lang === 'CN' ? 'EN' : 'CN')" class="border border-white px-2">
+                Locale: <span x-text="lang"></span>
+            </button>
         </div>
-        <div className="text-center uppercase tracking-widest">[ Archive Only ]</div>
-        <div className="flex flex-col items-end">
-          <span>SIGNAL: STABLE</span>
-          <span>SYSTEM: MEDUSE_OS</span>
+    </nav>
+
+    <!-- 2. 主展示网格 -->
+    <main class="relative z-10 pt-64 pb-64 px-10 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-20">
+            
+            <template x-for="work in works" :key="work.id">
+                <div class="chrome-box p-6 group flex flex-col relative" @click="selected = work">
+                    <!-- 窗口装饰线条 -->
+                    <div class="scanline opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    
+                    <div class="flex justify-between font-mono text-[9px] opacity-40 mb-6 uppercase">
+                        <span x-text="'Ref.' + work.id"></span>
+                        <span x-text="work.cat"></span>
+                    </div>
+
+                    <!-- 图像容器 -->
+                    <div class="relative aspect-[4/5] bg-zinc-900 overflow-hidden mb-8">
+                        <img :src="work.img" class="w-full h-full object-cover grayscale opacity-40 group-hover:opacity-100 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000">
+                        <!-- 装饰：四个角标 -->
+                        <div class="absolute top-2 left-2 border-l border-t border-white/20 w-4 h-4"></div>
+                        <div class="absolute bottom-2 right-2 border-r border-b border-white/20 w-4 h-4"></div>
+                    </div>
+
+                    <!-- 标题：Wix 风格拉伸字 -->
+                    <div class="space-y-2">
+                        <h3 class="text-4xl font-pixel italic tracking-tighter group-hover:translate-x-4 transition-transform" 
+                            x-text="lang === 'CN' ? work.cn.t : work.en.t"></h3>
+                        <p class="text-[10px] font-mono opacity-0 group-hover:opacity-40 transition-opacity uppercase tracking-widest leading-relaxed" 
+                           x-text="lang === 'CN' ? work.cn.d : work.en.d"></p>
+                    </div>
+                </div>
+            </template>
+
         </div>
-      </footer>
-    </div>
-  );
-}
+    </main>
+
+    <!-- 3. 详情弹窗 (差值窗口) -->
+    <template x-if="selected">
+        <div class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-10" 
+             @click.self="selected = null" x-transition.opacity>
+            
+            <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
+                <!-- 详情大图 -->
+                <div class="relative border border-white/10 p-2 shadow-[0_0_50px_rgba(255,255,255,0.05)]">
+                    <img :src="selected.img" class="w-full h-auto">
+                </div>
+
+                <!-- 展签内容 (Mix-Blend-Difference) -->
+                <div class="space-y-12 mix-blend-difference">
+                    <div>
+                        <span class="text-white opacity-40 font-mono text-xs uppercase" x-text="selected.cat"></span>
+                        <h2 class="text-7xl font-pixel italic tracking-tighter text-white uppercase leading-none mt-2" 
+                            x-text="lang === 'CN' ? selected.cn.t : selected.en.t"></h2>
+                    </div>
+                    
+                    <p class="font-mono text-sm leading-relaxed opacity-60 border-l border-white/20 pl-8 italic" 
+                       x-text="lang === 'CN' ? selected.cn.d : selected.en.d"></p>
+                    
+                    <div class="grid grid-cols-2 gap-4 font-mono text-[9px] uppercase tracking-widest opacity-40">
+                        <div>Material: Bio-Chrome</div>
+                        <div>Status: Archive Only</div>
+                    </div>
+
+                    <button @click="selected = null" class="w-full py-4 bg-white text-black font-pixel font-bold text-sm hover:invert transition-all">
+                        Terminate_Session_
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- 4. 底部数据栏 (HUD) -->
+    <footer class="fixed bottom-0 w-full p-10 z-[100] flex justify-between items-end font-mono text-[8px] opacity-40 mix-blend-difference pointer-events-none uppercase">
+        <div class="flex flex-col gap-1">
+            <p>Lat: 35.6895 N</p>
+            <p>Depth: 10,911 M</p>
+        </div>
+        <div class="text-center tracking-[0.5em]">
+            MEDUSE // CHROME_LAB
+        </div>
+        <div class="flex flex-col items-end gap-1 text-right">
+            <p>Temp: 02.4 °C</p>
+            <p>Protocol: Active</p>
+        </div>
+    </footer>
+
+    <script>
+        // 实现光标移动逻辑
+        const lens = document.getElementById('lens');
+        document.addEventListener('mousemove', (e) => {
+            lens.style.left = e.clientX + 'px';
+            lens.style.top = e.clientY + 'px';
+        });
+
+        // 交互增强：悬停时光标变大
+        document.querySelectorAll('button, .chrome-box').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                lens.style.width = '350px';
+                lens.style.height = '350px';
+            });
+            el.addEventListener('mouseleave', () => {
+                lens.style.width = '250px';
+                lens.style.height = '250px';
+            });
+        });
+    </script>
+</body>
+</html>
